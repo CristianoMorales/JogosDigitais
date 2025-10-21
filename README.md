@@ -33,6 +33,3 @@ A cada fase, o jogo exige maior consistência no ritmo, promovendo foco, control
 | Controle de versão | GitHub |
 | Plataforma | PC e Android |
 
----
-
-## 🧠 Estrutura do Projeto
