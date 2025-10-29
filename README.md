@@ -29,7 +29,7 @@ A cada fase, o jogo exige maior consistência no ritmo, promovendo foco, control
 | Linguagem | Java |
 | Framework de jogo | [libGDX](https://libgdx.com/) |
 | IoT / Comunicação | Bluetooth Low Energy (BLE) ou MQTT |
-| IDE | IntelliJ IDEA / Android Studio |
+| IDE | IntelliJ IDEA |
 | Controle de versão | GitHub |
-| Plataforma | PC e Android |
+| Plataforma | PC |
 
