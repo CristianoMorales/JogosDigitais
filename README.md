@@ -1,33 +1,35 @@
-# RiverRun
+# 🎮 RiverRun: A Sombra nas Águas
 
-A [libGDX](https://libgdx.com/) project generated with [gdx-liftoff](https://github.com/libgdx/gdx-liftoff).
+## 🧠 Sobre o Projeto
+**River Run: Reabilitação no Ritmo** é um *serious game* desenvolvido em **Java (libGDX)** que utiliza **dados de sensores IoT** para transformar pedaladas reais em uma experiência interativa de reabilitação física.
 
-This project was generated with a template including simple application launchers and a main class extending `Game` that sets the first screen.
+O jogo tem como objetivo **estimular ritmo, constância e engajamento** em sessões de fisioterapia, convertendo as pedaladas do usuário em velocidade e estabilidade de um barco que percorre um rio cheio de desafios.
 
-## Platforms
+---
 
-- `core`: Main module with the application logic shared by all platforms.
-- `lwjgl3`: Primary desktop platform using LWJGL3; was called 'desktop' in older docs.
+## 🚴‍♂️ Conceito do Jogo
+O jogador controla um **barco** em um rio.  
+A **velocidade** e o **equilíbrio** do barco são definidos por dados reais de pedaladas enviados via **Bluetooth ou MQTT**.  
+A cada fase, o jogo exige maior consistência no ritmo, promovendo foco, controle motor e resistência.
 
-## Gradle
+---
 
-This project uses [Gradle](https://gradle.org/) to manage dependencies.
-The Gradle wrapper was included, so you can run Gradle tasks using `gradlew.bat` or `./gradlew` commands.
-Useful Gradle tasks and flags:
+## 🧩 Funcionalidades Principais
+- 🔗 **Integração IoT:** Recebe dados de sensores (RPM) em tempo real.  
+- ⚙️ **Cálculo de métricas:** velocidade, consistência e tempo em zona de ritmo ideal.  
+- 🌊 **Três fases progressivas:** rio calmo, rápidos moderados e gargantas turbulentas.  
+- 🧭 **Interface interativa:** menus de pausa, reinício e tela de resultados com gráficos.  
+- 📊 **Feedback terapêutico:** acompanhamento visual da evolução do jogador.  
 
-- `--continue`: when using this flag, errors will not stop the tasks from running.
-- `--daemon`: thanks to this flag, Gradle daemon will be used to run chosen tasks.
-- `--offline`: when using this flag, cached dependency archives will be used.
-- `--refresh-dependencies`: this flag forces validation of all dependencies. Useful for snapshot versions.
-- `build`: builds sources and archives of every project.
-- `cleanEclipse`: removes Eclipse project data.
-- `cleanIdea`: removes IntelliJ project data.
-- `clean`: removes `build` folders, which store compiled classes and built archives.
-- `eclipse`: generates Eclipse project data.
-- `idea`: generates IntelliJ project data.
-- `lwjgl3:jar`: builds application's runnable jar, which can be found at `lwjgl3/build/libs`.
-- `lwjgl3:run`: starts the application.
-- `test`: runs unit tests (if any).
+---
 
-Note that most tasks that are not specific to a single project can be run with `name:` prefix, where the `name` should be replaced with the ID of a specific project.
-For example, `core:clean` removes `build` folder only from the `core` project.
+## 💻 Tecnologias Utilizadas
+| Componente | Tecnologia |
+|-------------|-------------|
+| Linguagem | Java |
+| Framework de jogo | [libGDX](https://libgdx.com/) |
+| IoT / Comunicação | Bluetooth Low Energy (BLE) ou MQTT |
+| IDE | IntelliJ IDEA |
+| Controle de versão | GitHub |
+| Plataforma | PC |
+
