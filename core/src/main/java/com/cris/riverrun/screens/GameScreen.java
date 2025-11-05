@@ -14,8 +14,9 @@ import com.badlogic.gdx.math.Vector2;
 public class GameScreen implements Screen {
 
     // Mundo fixo (independente da resolução do monitor)
-    private static final float VIRTUAL_W = 360f;
-    private static final float VIRTUAL_H = 640f;
+// Mundo fixo (para widescreen)
+    private static final float VIRTUAL_W = 1280f;
+    private static final float VIRTUAL_H = 720f;
 
     private OrthographicCamera camera;
     private FitViewport viewport;
