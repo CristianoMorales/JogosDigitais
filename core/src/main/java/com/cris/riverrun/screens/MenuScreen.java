@@ -1,254 +1,292 @@
 package com.cris.riverrun.screens;
 
 import com.badlogic.gdx.Gdx;
+import com.badlogic.gdx.Input;
+import com.badlogic.gdx.InputAdapter;
 import com.badlogic.gdx.Screen;
-import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.GL20;
-import com.badlogic.gdx.graphics.Pixmap;
+import com.badlogic.gdx.graphics.OrthographicCamera;
 import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.BitmapFont;
+import com.badlogic.gdx.graphics.g2d.GlyphLayout;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
-import com.badlogic.gdx.graphics.g2d.TextureRegion;
-import com.badlogic.gdx.scenes.scene2d.InputEvent;
-import com.badlogic.gdx.scenes.scene2d.Stage;
-import com.badlogic.gdx.scenes.scene2d.ui.Label;
-import com.badlogic.gdx.scenes.scene2d.ui.Table;
-import com.badlogic.gdx.scenes.scene2d.ui.TextButton;
-import com.badlogic.gdx.scenes.scene2d.utils.ClickListener;
-import com.badlogic.gdx.scenes.scene2d.utils.Drawable;
-import com.badlogic.gdx.scenes.scene2d.utils.TextureRegionDrawable;
-import com.badlogic.gdx.utils.Align;
+import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
 import com.badlogic.gdx.utils.viewport.FitViewport;
 import com.cris.riverrun.RiverRunGame;
-
-import static com.badlogic.gdx.scenes.scene2d.actions.Actions.scaleTo;
+import com.badlogic.gdx.math.MathUtils;
+import com.badlogic.gdx.math.Vector2;
+import com.badlogic.gdx.utils.Array;
 
 public class MenuScreen implements Screen {
 
+    private static final float VIRTUAL_W = 1280f;
+    private static final float VIRTUAL_H = 720f;
+
     private final RiverRunGame game;
-    private Stage stage;
+
+    private OrthographicCamera camera;
+    private FitViewport viewport;
     private SpriteBatch batch;
+    private ShapeRenderer shapes;
+    private BitmapFont font;
 
-    private Texture backgroundTexture;   // usa river.png
-    private Texture wavesTexture;        // ondas geradas
-    private Texture pixel;               // overlay 1x1
-    private float waveOffset;
+    // assets de UI
+    private Texture riverClear, riverDark, riverRed;
+    private Texture titulo;
+    private Texture selectedBg;
 
-    private Label titleLabel;
-    private BitmapFont titleFont;
-    private BitmapFont buttonFont;
+    // Assets de cenário do menu
+    private Texture rockTexture;
+    private Texture[] krakenFrames;
+    private float krakenAnimationTime = 0f;
+    private float krakenFrameDuration = 0.15f;
+    private Array<Vector2> rockPositions;
 
-    private Drawable btnUp, btnOver, btnDown;
+    // botões
+    private Button btnStart, btnSettings, btnExit;
+    private Button btnPhaseClear, btnPhaseDark, btnPhaseRed, btnBack;
+    private boolean selectingPhase = false;
 
-    private final float VIRTUAL_W = 1280f;
-    private final float VIRTUAL_H = 720f;
+    // layout logo
+    private float logoX, logoY, logoW, logoH;
 
     public MenuScreen(RiverRunGame game) {
         this.game = game;
-        this.batch = new SpriteBatch();
     }
 
     @Override
     public void show() {
-        stage = new Stage(new FitViewport(VIRTUAL_W, VIRTUAL_H), batch);
-        Gdx.input.setInputProcessor(stage);
+        camera = new OrthographicCamera();
+        viewport = new FitViewport(VIRTUAL_W, VIRTUAL_H, camera);
+        viewport.apply(true);
+        camera.position.set(VIRTUAL_W / 2f, VIRTUAL_H / 2f, 0);
+        camera.update();
 
-        // fundo
-        backgroundTexture = new Texture("river.png");
+        batch = new SpriteBatch();
+        shapes = new ShapeRenderer();
+        font = new BitmapFont();
+        font.getData().setScale(1.1f);
 
-        // overlay 1x1
-        Pixmap p = new Pixmap(1, 1, Pixmap.Format.RGBA8888);
-        p.setColor(1,1,1,1);
-        p.fill();
-        pixel = new Texture(p);
-        p.dispose();
+        // imagens
+        riverClear = new Texture("ClearRiver.png");
+        riverDark  = new Texture("DarkRiver.png");
+        riverRed   = new Texture("RedRiver.png");
+        titulo     = new Texture("Titulo.png");
 
-        // ondas
-        wavesTexture = makeWavesTexture(512, 200);
+        // Escolhe aleatoriamente um fundo de rio
+        Texture[] rivers = { riverClear, riverDark, riverRed };
+        selectedBg = rivers[MathUtils.random(0, 2)];
 
-        // fontes
-        titleFont = new BitmapFont();
-        titleFont.getData().setScale(2.6f);
-        buttonFont = new BitmapFont();
+        // Carrega assets do cenário
+        rockTexture = new Texture("rockClear.png");
 
-        // botões sem skin
-        btnUp   = makeRectDrawable(new Color(0,0,0,0.45f));
-        btnOver = makeRectDrawable(new Color(0.10f,0.20f,0.35f,0.60f));
-        btnDown = makeRectDrawable(new Color(0,0,0,0.75f));
+        krakenFrames = new Texture[12];
+        for (int i = 0; i < 12; i++) {
+            krakenFrames[i] = new Texture("kraken" + (i + 1) + ".png");
+        }
 
-        TextButton.TextButtonStyle buttonStyle = new TextButton.TextButtonStyle();
-        buttonStyle.font = buttonFont;
-        buttonStyle.fontColor = Color.WHITE;
-        buttonStyle.overFontColor = Color.SKY;
-        buttonStyle.downFontColor = Color.LIGHT_GRAY;
-        buttonStyle.up = btnUp;
-        buttonStyle.over = btnOver;
-        buttonStyle.down = btnDown;
+        // Gera posições aleatórias para as pedras
+        rockPositions = new Array<>();
+        for (int i = 0; i < 6; i++) {
+            float rockX = MathUtils.random(0, VIRTUAL_W - 60f);
+            float rockY = MathUtils.random(0, VIRTUAL_H - 60f);
 
-        // título
-        Label.LabelStyle titleStyle = new Label.LabelStyle();
-        titleStyle.font = titleFont;
-        titleStyle.fontColor = Color.CYAN;
-        titleLabel = new Label("RIVER RUN", titleStyle);
-        titleLabel.setAlignment(Align.center);
+            boolean isNearCenter = (rockX > VIRTUAL_W * 0.25f && rockX < VIRTUAL_W * 0.75f) &&
+                (rockY > VIRTUAL_H * 0.2f && rockY < VIRTUAL_H * 0.8f);
 
-        // botões
-        TextButton startButton   = new TextButton("START",   buttonStyle);
-        TextButton optionsButton = new TextButton("OPTIONS", buttonStyle);
-        TextButton exitButton    = new TextButton("EXIT",    buttonStyle);
+            if (!isNearCenter) {
+                rockPositions.add(new Vector2(rockX, rockY));
+            }
+        }
 
-        addButtonHoverAnimations(startButton);
-        addButtonHoverAnimations(optionsButton);
-        addButtonHoverAnimations(exitButton);
+        // calcula tamanho/posição do logo mantendo proporção
+        float maxW = 700f;
+        float maxH = 220f;
+        float scale = Math.min(maxW / titulo.getWidth(), maxH / titulo.getHeight());
+        logoW = titulo.getWidth() * scale;
+        logoH = titulo.getHeight() * scale;
+        logoX = (VIRTUAL_W - logoW) / 2f;
+        logoY = VIRTUAL_H - logoH - 40f;
 
-        // layout
-        Table table = new Table();
-        table.setFillParent(true);
-        table.center();
-        table.add(titleLabel).padBottom(60).row();
-        table.add(startButton).width(280).height(64).pad(10).row();
-        table.add(optionsButton).width(280).height(64).pad(10).row();
-        table.add(exitButton).width(280).height(64).pad(10);
-        stage.addActor(table);
+        // layout de botões
+        float cx = VIRTUAL_W / 2f;
+        float bw = 340f, bh = 56f, gap = 12f;
+        float baseY = VIRTUAL_H / 2f - 40f;
 
-        // ações
-        startButton.addListener(new ClickListener() {
-            @Override public void clicked(InputEvent event, float x, float y) {
-                // Se o seu GameScreen aceitar RiverRunGame, troque para: new GameScreen(game)
-                game.setScreen(new GameScreen());
+        btnStart    = new Button(cx - bw / 2f, baseY + (bh + gap) * 1.5f, bw, bh, "JOGAR");
+        btnSettings = new Button(cx - bw / 2f, baseY + (bh + gap) * 0.5f, bw, bh, "CONFIGURAÇÕES");
+        btnExit     = new Button(cx - bw / 2f, baseY - (bh + gap) * 0.5f, bw, bh, "SAIR");
+
+        // painel de fases (aparece em modal)
+        float pbw = 420f;
+        btnPhaseClear = new Button(cx - pbw / 2f, baseY + (bh + gap) * 1.0f, pbw, bh, "Rio Calmo");
+        btnPhaseDark  = new Button(cx - pbw / 2f, baseY + (bh + gap) * 0.0f, pbw, bh, "Rio Bravo");
+        btnPhaseRed   = new Button(cx - pbw / 2f, baseY - (bh + gap) * 1.0f, pbw, bh, "Rio da Morte");
+        btnBack       = new Button(cx - pbw / 2f, baseY - (bh + gap) * 2.0f, pbw, bh, "Voltar");
+
+        // input
+        Gdx.input.setInputProcessor(new InputAdapter() {
+            // ... (Código do InputAdapter permanece o mesmo) ...
+            @Override
+            public boolean keyDown(int keycode) {
+                if (keycode == Input.Keys.ESCAPE) {
+                    if (selectingPhase) {
+                        selectingPhase = false;
+                        return true;
+                    } else {
+                        Gdx.app.exit();
+                        return true;
+                    }
+                }
+                return false;
+            }
+
+            @Override
+            public boolean touchDown (int screenX, int screenY, int pointer, int button) {
+                com.badlogic.gdx.math.Vector3 v = new com.badlogic.gdx.math.Vector3(screenX, screenY, 0);
+                camera.unproject(v);
+
+                if (!selectingPhase) {
+                    if (btnStart.hit(v.x, v.y))      { selectingPhase = true; return true; }
+                    if (btnSettings.hit(v.x, v.y))   { /* abrir tela de configs futuramente */ return true; }
+                    if (btnExit.hit(v.x, v.y))       { Gdx.app.exit(); return true; }
+                } else {
+                    if (btnPhaseClear.hit(v.x, v.y)) { game.setScreen(new GameScreen(game, "ClearRiver.png")); return true; }
+                    if (btnPhaseDark.hit(v.x, v.y))  { game.setScreen(new GameScreen(game, "DarkRiver.png"));  return true; }
+                    if (btnPhaseRed.hit(v.x, v.y))   { game.setScreen(new GameScreen(game, "RedRiver.png"));   return true; }
+                    if (btnBack.hit(v.x, v.y))       { selectingPhase = false; return true; }
+                }
+                return false;
             }
         });
-        optionsButton.addListener(new ClickListener() {
-            @Override public void clicked(InputEvent event, float x, float y) {
-                // game.setScreen(new OptionsScreen(game));
-            }
-        });
-        exitButton.addListener(new ClickListener() {
-            @Override public void clicked(InputEvent event, float x, float y) {
-                Gdx.app.exit();
-            }
-        });
-
-        // música opcional
-        tryPlayMusic("music/river_theme.mp3");
     }
 
     @Override
     public void render(float delta) {
+        // Atualiza a animação do Kraken
+        krakenAnimationTime += delta;
+
         Gdx.gl.glClearColor(0,0,0,1);
         Gdx.gl.glClear(GL20.GL_COLOR_BUFFER_BIT);
 
-        waveOffset += delta * 30f;
+        Gdx.gl.glEnable(GL20.GL_BLEND);
+        Gdx.gl.glBlendFunc(GL20.GL_SRC_ALPHA, GL20.GL_ONE_MINUS_SRC_ALPHA);
 
+        batch.setProjectionMatrix(camera.combined);
+        shapes.setProjectionMatrix(camera.combined);
+
+        // Ordem de desenho (fundo, cenário, logo)
         batch.begin();
-        // fundo
-        batch.draw(backgroundTexture, 0, 0, VIRTUAL_W, VIRTUAL_H);
+        // 1. Fundo (rio aleatório)
+        batch.draw(selectedBg, 0, 0, VIRTUAL_W, VIRTUAL_H);
 
-        // overlay escuro
-        batch.setColor(0,0,0,0.35f);
-        batch.draw(pixel, 0, 0, VIRTUAL_W, VIRTUAL_H);
-        batch.setColor(1,1,1,1);
+        // 2. Pedras espalhadas
+        float rockW = 64f, rockH = 64f;
+        for(Vector2 pos : rockPositions) {
+            batch.draw(rockTexture, pos.x, pos.y, rockW, rockH);
+        }
 
-        // ondas na base
-        float w = wavesTexture.getWidth();
-        float x = -(waveOffset % w);
-        batch.draw(wavesTexture, x, 0);
-        batch.draw(wavesTexture, x + w, 0);
+        // 3. Kraken animado (agora na direita)
+        int frameIndex = (int)(krakenAnimationTime / krakenFrameDuration) % krakenFrames.length;
+        float krakenW = 128f, krakenH = 128f;
+
+        // <<< ÚNICA MUDANÇA AQUI >>>
+        float krakenX = VIRTUAL_W - krakenW - 40f; // 1280 (total) - 128 (largura) - 40 (margem)
+        float krakenY = 40f;
+        // <<< FIM DA MUDANÇA >>>
+
+        batch.draw(krakenFrames[frameIndex], krakenX, krakenY, krakenW, krakenH);
+
+        // 4. Logo (por cima de tudo)
+        batch.draw(titulo, logoX, logoY, logoW, logoH);
         batch.end();
+        // --- Fim da alteração de desenho ---
 
-        // leve “shake” no título
-        float shake = (float) Math.sin(System.currentTimeMillis() * 0.005) * 2f;
-        titleLabel.setRotation(shake);
-
-        stage.act(delta);
-        stage.draw();
+        if (!selectingPhase) {
+            drawButton(btnStart);
+            drawButton(btnSettings);
+            drawButton(btnExit);
+        } else {
+            // modal escurecendo o fundo
+            // ... (Código do modal permanece o mesmo) ...
+            shapes.begin(ShapeRenderer.ShapeType.Filled);
+            shapes.setColor(0, 0, 0, 0.55f);
+            shapes.rect(0, 0, VIRTUAL_W, VIRTUAL_H);
+            float cardW = 640f, cardH = 360f;
+            float cardX = (VIRTUAL_W - cardW)/2f, cardY = (VIRTUAL_H - cardH)/2f - 20f;
+            shapes.setColor(0.10f, 0.13f, 0.17f, 1f);
+            shapes.rect(cardX, cardY, cardW, cardH);
+            shapes.setColor(0.18f, 0.22f, 0.28f, 1f);
+            shapes.rect(cardX-4, cardY-4, cardW+8, 4);
+            shapes.rect(cardX-4, cardY+cardH, cardW+8, 4);
+            shapes.rect(cardX-4, cardY, 4, cardH);
+            shapes.rect(cardX+cardW, cardY, 4, cardH);
+            shapes.end();
+            batch.begin();
+            GlyphLayout gl = new GlyphLayout(font, "Selecione a fase");
+            font.draw(batch, gl, (VIRTUAL_W - gl.width)/2f, cardY + cardH - 16f);
+            batch.end();
+            drawButton(btnPhaseClear, riverClear);
+            drawButton(btnPhaseDark,  riverDark);
+            drawButton(btnPhaseRed,   riverRed);
+            drawButton(btnBack);
+        }
     }
 
-    @Override
-    public void resize(int width, int height) {
-        stage.getViewport().update(width, height, true);
+    private void drawButton(Button b) { drawButton(b, null); }
+
+    private void drawButton(Button b, Texture preview) {
+        // ... (Código do drawButton permanece o mesmo) ...
+        shapes.begin(ShapeRenderer.ShapeType.Filled);
+        shapes.setColor(0, 0, 0, 0.35f);
+        shapes.rect(b.x + 3, b.y - 3, b.w, b.h);
+        shapes.setColor(0.12f, 0.16f, 0.20f, 1f);
+        shapes.rect(b.x, b.y, b.w, b.h);
+        shapes.setColor(1f, 1f, 1f, 0.06f);
+        shapes.rect(b.x, b.y + b.h - 4, b.w, 4);
+        shapes.end();
+        batch.begin();
+        float pad = 12f;
+        float textX = b.x + pad;
+        if (preview != null) {
+            float sW = 72f, sH = 40f;
+            batch.draw(preview, b.x + pad, b.y + (b.h - sH) / 2f, sW, sH);
+            textX += sW + 10f;
+        }
+        GlyphLayout gl = new GlyphLayout(font, b.label);
+        font.draw(batch, gl, textX, b.y + (b.h + gl.height) / 2f + 1f);
+        batch.end();
     }
 
+    @Override public void resize(int w, int h) { viewport.update(w, h, true); }
     @Override public void pause() {}
     @Override public void resume() {}
-    @Override public void hide() {}
+    @Override public void hide() { dispose(); }
 
     @Override
     public void dispose() {
-        stage.dispose();
         batch.dispose();
-        if (backgroundTexture != null) backgroundTexture.dispose();
-        if (wavesTexture != null) wavesTexture.dispose();
-        if (pixel != null) pixel.dispose();
-        disposeDrawable(btnUp);
-        disposeDrawable(btnOver);
-        disposeDrawable(btnDown);
-        if (titleFont != null) titleFont.dispose();
-        if (buttonFont != null && buttonFont != titleFont) buttonFont.dispose();
-    }
+        shapes.dispose();
+        font.dispose();
+        riverClear.dispose();
+        riverDark.dispose();
+        riverRed.dispose();
+        titulo.dispose();
 
-    // ---------- Helpers ----------
-
-    private void addButtonHoverAnimations(final TextButton btn) {
-        btn.addListener(new ClickListener() {
-            @Override
-            public void enter(InputEvent event, float x, float y, int pointer, com.badlogic.gdx.scenes.scene2d.Actor fromActor) {
-                btn.setTransform(true);
-                btn.addAction(scaleTo(1.03f, 1.03f, 0.08f));
-            }
-            @Override
-            public void exit(InputEvent event, float x, float y, int pointer, com.badlogic.gdx.scenes.scene2d.Actor toActor) {
-                btn.addAction(scaleTo(1f, 1f, 0.08f));
-            }
-            @Override
-            public boolean touchDown(InputEvent event, float x, float y, int pointer, int button) {
-                btn.addAction(com.badlogic.gdx.scenes.scene2d.actions.Actions.sequence(
-                    scaleTo(0.98f, 0.98f, 0.05f),
-                    scaleTo(1.03f, 1.03f, 0.05f)
-                ));
-                return super.touchDown(event, x, y, pointer, button);
-            }
-        });
-    }
-
-    private Drawable makeRectDrawable(Color color) {
-        Pixmap pm = new Pixmap(10, 10, Pixmap.Format.RGBA8888);
-        pm.setColor(color);
-        pm.fill();
-        Texture tex = new Texture(pm);
-        pm.dispose();
-        return new TextureRegionDrawable(new TextureRegion(tex));
-    }
-
-    private void disposeDrawable(Drawable d) {
-        if (d instanceof TextureRegionDrawable) {
-            TextureRegion r = ((TextureRegionDrawable) d).getRegion();
-            if (r != null && r.getTexture() != null) r.getTexture().dispose();
-        }
-    }
-
-    private Texture makeWavesTexture(int w, int h) {
-        Pixmap pm = new Pixmap(w, h, Pixmap.Format.RGBA8888);
-        pm.setColor(0f, 0.3f, 0.6f, 0.18f);
-        pm.fill();
-        pm.setColor(1f, 1f, 1f, 0.20f);
-        for (int y = 20; y < h; y += 20) {
-            for (int x = 0; x < w; x++) {
-                int yOff = (int)(4 * Math.sin((x + y) * 0.05));
-                int yy = Math.min(h - 1, Math.max(0, y + yOff));
-                pm.drawPixel(x, yy);
+        // Dispose dos assets do cenário
+        rockTexture.dispose();
+        if (krakenFrames != null) {
+            for (Texture frame : krakenFrames) {
+                if (frame != null) frame.dispose();
             }
         }
-        Texture t = new Texture(pm);
-        pm.dispose();
-        return t;
     }
 
-    private void tryPlayMusic(String path) {
-        try {
-            if (Gdx.files.internal(path).exists()) {
-                game.playMenuMusic(path);
-            }
-        } catch (Exception ignored) {}
+    private static class Button {
+        // ... (Código da classe Button permanece o mesmo) ...
+        float x, y, w, h;
+        String label;
+        Button(float x, float y, float w, float h, String l) { this.x=x; this.y=y; this.w=w; this.h=h; this.label=l; }
+        boolean hit(float px, float py) { return px>=x && px<=x+w && py>=y && py<=y+h; }
     }
 }

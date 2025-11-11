@@ -5,6 +5,7 @@ import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.audio.Music;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.cris.riverrun.screens.MenuScreen;
+import com.cris.riverrun.screens.GameScreen;
 
 public class RiverRunGame extends Game {
     public SpriteBatch batch;
@@ -14,22 +15,23 @@ public class RiverRunGame extends Game {
     public void create() {
         batch = new SpriteBatch();
         setScreen(new MenuScreen(this));
+        playMenuMusic("menu_theme.mp3"); // toca música do menu assim que o jogo inicia
     }
 
-    // Toca música de fundo no menu
+    // toca música do menu (chame de novo ao voltar pro menu)
     public void playMenuMusic(String path) {
-        stopMenuMusic(); // garante que não toque duas ao mesmo tempo
+        stopMenuMusic();
         try {
             menuMusic = Gdx.audio.newMusic(Gdx.files.internal(path));
             menuMusic.setLooping(true);
-            menuMusic.setVolume(0.5f); // 50% do volume máximo
+            menuMusic.setVolume(0.5f);
             menuMusic.play();
         } catch (Exception e) {
             System.out.println("Não foi possível tocar a música: " + path);
         }
     }
 
-    // Para e limpa a música atual
+    // parar música
     public void stopMenuMusic() {
         if (menuMusic != null) {
             menuMusic.stop();
@@ -39,9 +41,20 @@ public class RiverRunGame extends Game {
     }
 
     @Override
+    public void setScreen(com.badlogic.gdx.Screen screen) {
+        super.setScreen(screen);
+        // controle automático de música conforme a tela
+        if (screen instanceof MenuScreen) {
+            playMenuMusic("menu_theme.mp3");
+        } else if (screen instanceof GameScreen) {
+            stopMenuMusic();
+        }
+    }
+
+    @Override
     public void dispose() {
         super.dispose();
-        stopMenuMusic(); // garante que pare a música ao fechar o jogo
+        stopMenuMusic();
         batch.dispose();
     }
 }
