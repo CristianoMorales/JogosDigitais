@@ -17,7 +17,6 @@ A **velocidade** do barco é gerenciada por um sistema de "cadência": o jogador
 ## 🧩 Funcionalidades Principais
 * 🌊 **Rolagem Vertical Contínua:** O rio nunca para, com a velocidade de rolagem aumentando com a cadência do jogador.
 * ⌨️ **Sistema de Cadência:** O barco acelera com a tecla "Cima", mas perde velocidade rapidamente, exigindo pressão constante para manter o ritmo.
-* 🏞️ **Fases Progressivas:** O jogo muda de ambiente, começando no "Rio Calmo" (`ClearRiver`) e avançando para o "Rio Sombrio" (`DarkRiver`).
 * 🐙 **Obstáculos Dinâmicos:** O jogador deve desviar de perigos variados, desde **pedras** estáticas até **tentáculos** animados que emergem das águas escuras.
 * 💥 **Detecção de Colisão:** O barco reage visualmente ao colidir com obstáculos, indicando perigo.
 * 🧭 **Interface Interativa:** O jogo inclui menus funcionais de pausa e a capacidade de retornar ao menu principal.
