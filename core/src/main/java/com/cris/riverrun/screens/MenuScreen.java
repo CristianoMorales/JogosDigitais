@@ -33,14 +33,18 @@ public class MenuScreen implements Screen {
     // assets de UI
     private Texture riverClear, riverDark, riverRed;
     private Texture titulo;
-    private Texture selectedBg;
+    private Texture selectedBg; // O fundo do rio escolhido
 
     // Assets de cenário do menu
     private Texture rockTexture;
     private Texture[] krakenFrames;
+    private Texture[] alienHeadFrames;
+
     private float krakenAnimationTime = 0f;
-    private float krakenFrameDuration = 0.15f;
-    private Array<Vector2> rockPositions;
+    private float alienHeadAnimationTime = 0f;
+    private float animationFrameDuration = 0.15f; // Duração do frame (para ambos)
+
+    private Array<Vector2> rockPositions; // Posições das pedras
 
     // botões
     private Button btnStart, btnSettings, btnExit;
@@ -85,12 +89,19 @@ public class MenuScreen implements Screen {
             krakenFrames[i] = new Texture("kraken" + (i + 1) + ".png");
         }
 
+
+        alienHeadFrames = new Texture[12];
+        for (int i = 0; i < 12; i++) {
+            alienHeadFrames[i] = new Texture("alienHead" + (i + 1) + ".png");
+        }
+
         // Gera posições aleatórias para as pedras
         rockPositions = new Array<>();
         for (int i = 0; i < 6; i++) {
             float rockX = MathUtils.random(0, VIRTUAL_W - 60f);
             float rockY = MathUtils.random(0, VIRTUAL_H - 60f);
 
+            // Evita área central
             boolean isNearCenter = (rockX > VIRTUAL_W * 0.25f && rockX < VIRTUAL_W * 0.75f) &&
                 (rockY > VIRTUAL_H * 0.2f && rockY < VIRTUAL_H * 0.8f);
 
@@ -99,7 +110,7 @@ public class MenuScreen implements Screen {
             }
         }
 
-        // calcula tamanho/posição do logo mantendo proporção
+        // layout logo
         float maxW = 700f;
         float maxH = 220f;
         float scale = Math.min(maxW / titulo.getWidth(), maxH / titulo.getHeight());
@@ -117,7 +128,7 @@ public class MenuScreen implements Screen {
         btnSettings = new Button(cx - bw / 2f, baseY + (bh + gap) * 0.5f, bw, bh, "CONFIGURAÇÕES");
         btnExit     = new Button(cx - bw / 2f, baseY - (bh + gap) * 0.5f, bw, bh, "SAIR");
 
-        // painel de fases (aparece em modal)
+        // painel de fases (modal)
         float pbw = 420f;
         btnPhaseClear = new Button(cx - pbw / 2f, baseY + (bh + gap) * 1.0f, pbw, bh, "Rio Calmo");
         btnPhaseDark  = new Button(cx - pbw / 2f, baseY + (bh + gap) * 0.0f, pbw, bh, "Rio Bravo");
@@ -126,16 +137,13 @@ public class MenuScreen implements Screen {
 
         // input
         Gdx.input.setInputProcessor(new InputAdapter() {
-            // ... (Código do InputAdapter permanece o mesmo) ...
             @Override
             public boolean keyDown(int keycode) {
                 if (keycode == Input.Keys.ESCAPE) {
                     if (selectingPhase) {
-                        selectingPhase = false;
-                        return true;
+                        selectingPhase = false; return true;
                     } else {
-                        Gdx.app.exit();
-                        return true;
+                        Gdx.app.exit(); return true;
                     }
                 }
                 return false;
@@ -148,7 +156,7 @@ public class MenuScreen implements Screen {
 
                 if (!selectingPhase) {
                     if (btnStart.hit(v.x, v.y))      { selectingPhase = true; return true; }
-                    if (btnSettings.hit(v.x, v.y))   { /* abrir tela de configs futuramente */ return true; }
+                    if (btnSettings.hit(v.x, v.y))   { /* ... */ return true; }
                     if (btnExit.hit(v.x, v.y))       { Gdx.app.exit(); return true; }
                 } else {
                     if (btnPhaseClear.hit(v.x, v.y)) { game.setScreen(new GameScreen(game, "ClearRiver.png")); return true; }
@@ -163,8 +171,9 @@ public class MenuScreen implements Screen {
 
     @Override
     public void render(float delta) {
-        // Atualiza a animação do Kraken
+        // Atualiza animações
         krakenAnimationTime += delta;
+        alienHeadAnimationTime += delta;
 
         Gdx.gl.glClearColor(0,0,0,1);
         Gdx.gl.glClear(GL20.GL_COLOR_BUFFER_BIT);
@@ -186,18 +195,21 @@ public class MenuScreen implements Screen {
             batch.draw(rockTexture, pos.x, pos.y, rockW, rockH);
         }
 
-        // 3. Kraken animado (agora na direita)
-        int frameIndex = (int)(krakenAnimationTime / krakenFrameDuration) % krakenFrames.length;
+        // 3. Kraken animado (inferior direito)
+        int krakenFrameIdx = (int)(krakenAnimationTime / animationFrameDuration) % krakenFrames.length;
         float krakenW = 128f, krakenH = 128f;
-
-        // <<< ÚNICA MUDANÇA AQUI >>>
-        float krakenX = VIRTUAL_W - krakenW - 40f; // 1280 (total) - 128 (largura) - 40 (margem)
+        float krakenX = VIRTUAL_W - krakenW - 40f;
         float krakenY = 40f;
-        // <<< FIM DA MUDANÇA >>>
+        batch.draw(krakenFrames[krakenFrameIdx], krakenX, krakenY, krakenW, krakenH);
 
-        batch.draw(krakenFrames[frameIndex], krakenX, krakenY, krakenW, krakenH);
+        // 4. Alien Head animado (superior esquerdo)
+        int alienFrameIdx = (int)(alienHeadAnimationTime / animationFrameDuration) % alienHeadFrames.length;
+        float alienW = 128f, alienH = 128f; // Mesmo tamanho do kraken
+        float alienX = 40f; // Margem esquerda
+        float alienY = VIRTUAL_H - alienH - 40f; // Margem superior
+        batch.draw(alienHeadFrames[alienFrameIdx], alienX, alienY, alienW, alienH);
 
-        // 4. Logo (por cima de tudo)
+        // 5. Logo (por cima de tudo)
         batch.draw(titulo, logoX, logoY, logoW, logoH);
         batch.end();
         // --- Fim da alteração de desenho ---
@@ -208,7 +220,6 @@ public class MenuScreen implements Screen {
             drawButton(btnExit);
         } else {
             // modal escurecendo o fundo
-            // ... (Código do modal permanece o mesmo) ...
             shapes.begin(ShapeRenderer.ShapeType.Filled);
             shapes.setColor(0, 0, 0, 0.55f);
             shapes.rect(0, 0, VIRTUAL_W, VIRTUAL_H);
@@ -236,7 +247,6 @@ public class MenuScreen implements Screen {
     private void drawButton(Button b) { drawButton(b, null); }
 
     private void drawButton(Button b, Texture preview) {
-        // ... (Código do drawButton permanece o mesmo) ...
         shapes.begin(ShapeRenderer.ShapeType.Filled);
         shapes.setColor(0, 0, 0, 0.35f);
         shapes.rect(b.x + 3, b.y - 3, b.w, b.h);
@@ -280,10 +290,15 @@ public class MenuScreen implements Screen {
                 if (frame != null) frame.dispose();
             }
         }
+        // Dispose da cabeça do alien
+        if (alienHeadFrames != null) {
+            for (Texture frame : alienHeadFrames) {
+                if (frame != null) frame.dispose();
+            }
+        }
     }
 
     private static class Button {
-        // ... (Código da classe Button permanece o mesmo) ...
         float x, y, w, h;
         String label;
         Button(float x, float y, float w, float h, String l) { this.x=x; this.y=y; this.w=w; this.h=h; this.label=l; }

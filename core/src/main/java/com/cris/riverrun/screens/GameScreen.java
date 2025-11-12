@@ -31,13 +31,14 @@ public class GameScreen implements Screen {
     private ShapeRenderer shapes;
     private BitmapFont font;
 
-    // <<< ALTERADO: Gerenciamento de Estado do Jogo
+    // Gerenciamento de Estado do Jogo
     private enum GameState { PLAYING, DYING, GAME_OVER }
     private GameState currentState = GameState.PLAYING;
-    // <<< NOVO: Enum para o tipo de animação de morte
-    private enum DeathAnimationType { KRAKEN, ROCK }
-    private DeathAnimationType currentDeathAnimation = DeathAnimationType.KRAKEN; // Padrão
-    // ---
+
+    // Enum para o tipo de animação de morte
+    private enum DeathAnimationType { KRAKEN, ROCK, ALIEN_HEAD }
+
+    private DeathAnimationType currentDeathAnimation = DeathAnimationType.KRAKEN;
 
     private Texture river;
     private Texture[] boatFrames;
@@ -63,21 +64,30 @@ public class GameScreen implements Screen {
     private float scrollSpeed = 0f;
     private float targetSpeed = 160f;
 
+    // --- VARIÁVEIS DE OBSTÁCULOS (INIMIGOS) ---
     private Array<Obstacle> obstacles;
-    private Texture rockTexture; // Textura da pedra (agora usada na morte também)
+    private Texture rockTexture;
     private Texture[] tentacleFrames;
     private Texture[] krakenFrames;
+    private Texture[] alienTentacleFrames;
+    private Texture[] alienHeadFrames;
     private float spawnTimer = 0f;
     private float spawnInterval = 1.5f;
     private boolean isColliding = false;
 
-    // <<< ALTERADO: Variáveis da Animação de Morte
+    // --- Variáveis da Animação de Morte ---
     private float deathAnimationTime = 0f;
+
     private float krakenDeathFrameDuration = 0.1f;
     private int krakenTotalDeathFrames = 12;
-    private float rockDeathZoomDuration = 1.2f; // <<< NOVO: Duração do zoom da pedra (em segundos)
+
+    private float rockDeathZoomDuration = 1.2f;
+
+    private float alienHeadDeathFrameDuration = 0.1f;
+    private int alienHeadTotalDeathFrames = 12;
     // ---
 
+    // PAUSE
     private boolean paused = false;
     private Button btnResume, btnSettings, btnMenu;
 
@@ -88,7 +98,6 @@ public class GameScreen implements Screen {
 
     @Override
     public void show() {
-        // ... (Todo o 'show()' permanece o mesmo, incluindo a correção 'bw/2f') ...
         camera = new OrthographicCamera();
         viewport = new FitViewport(VIRTUAL_W, VIRTUAL_H, camera);
         viewport.apply(true);
@@ -103,22 +112,33 @@ public class GameScreen implements Screen {
         river = new Texture(backgroundFile);
         river.setFilter(Texture.TextureFilter.Nearest, Texture.TextureFilter.Nearest);
 
+        // Carrega frames do barco
         boatFrames = new Texture[4];
         for (int i = 0; i < 4; i++) {
             boatFrames[i] = new Texture("boat" + (i + 1) + ".png");
         }
 
-        rockTexture = new Texture("rockClear.png"); // Já carregamos a pedra aqui
+        // --- Carrega texturas dos obstáculos ---
+        rockTexture = new Texture("rockClear.png");
 
         tentacleFrames = new Texture[6];
         for (int i = 0; i < 6; i++) {
             tentacleFrames[i] = new Texture("tentacle" + (i + 1) + ".png");
         }
-
         krakenFrames = new Texture[12];
         for (int i = 0; i < 12; i++) {
             krakenFrames[i] = new Texture("kraken" + (i + 1) + ".png");
         }
+
+        alienTentacleFrames = new Texture[8];
+        for (int i = 0; i < 8; i++) {
+            alienTentacleFrames[i] = new Texture("alienTentacle" + (i + 1) + ".png");
+        }
+        alienHeadFrames = new Texture[12];
+        for (int i = 0; i < 12; i++) {
+            alienHeadFrames[i] = new Texture("alienHead" + (i + 1) + ".png");
+        }
+        // --- Fim da carga de assets ---
 
         obstacles = new Array<>();
         riverY1 = 0;
@@ -134,16 +154,15 @@ public class GameScreen implements Screen {
         btnSettings = new Button(cx - bw/2f, baseY - (bh+gap),    bw, bh, "Configurações");
         btnMenu     = new Button(cx - bw/2f, baseY - 2*(bh+gap),  bw, bh, "Voltar ao Menu");
 
+        // Input Processor unificado
         Gdx.input.setInputProcessor(new InputAdapter() {
 
             @Override
             public boolean keyDown(int keycode) {
-                // 1. Lógica de PAUSA
                 if (keycode == Input.Keys.ESCAPE && currentState != GameState.GAME_OVER) {
                     paused = !paused;
                     return true;
                 }
-                // 2. Lógica de GAME OVER
                 if (currentState == GameState.GAME_OVER) {
                     if (keycode == Input.Keys.ENTER || keycode == Input.Keys.SPACE) {
                         game.setScreen(new MenuScreen(game));
@@ -169,6 +188,7 @@ public class GameScreen implements Screen {
     }
 
 
+    // Loop de update principal (baseado em estado)
     private void update(float delta) {
         if (paused) return;
 
@@ -185,9 +205,9 @@ public class GameScreen implements Screen {
         }
     }
 
-
+    // Lógica do jogo rodando
     private void updatePlaying(float delta) {
-        // ... (Movimento do barco e rolagem permanecem os mesmos) ...
+        // --- 1. Movimento (Vertical e Lateral) ---
         if (Gdx.input.isKeyPressed(Input.Keys.UP)) cadencePower += cadenceAccel * delta;
         else cadencePower -= cadenceDecay * delta;
         cadencePower = MathUtils.clamp(cadencePower, 0f, 1f);
@@ -196,12 +216,16 @@ public class GameScreen implements Screen {
         riverY2 -= scrollSpeed * delta;
         if (riverY1 <= -VIRTUAL_H) riverY1 = riverY2 + VIRTUAL_H;
         if (riverY2 <= -VIRTUAL_H) riverY2 = riverY1 + VIRTUAL_H;
+
         if (Gdx.input.isKeyPressed(Input.Keys.LEFT)) boatPos.x -= boatLateralSpeed * delta;
         if (Gdx.input.isKeyPressed(Input.Keys.RIGHT)) boatPos.x += boatLateralSpeed * delta;
         boatPos.x = MathUtils.clamp(boatPos.x, minScreenX, maxScreenX);
+
         boatBobTime += delta * 2f;
         boatPos.y = boatBaseY + MathUtils.sin(boatBobTime) * 4f;
         animationTime += delta;
+
+        // --- 2. Geração de Obstáculos ---
         spawnTimer -= delta;
         if (spawnTimer <= 0) {
             spawnObstacle();
@@ -216,31 +240,34 @@ public class GameScreen implements Screen {
             o.update(delta);
             o.pos.y -= scrollSpeed * delta;
 
-            // <<< ALTERADO: Lógica de Colisão agora define o TIPO de morte >>>
+            // Checa colisão
             if (checkCollision(o)) {
                 isColliding = true;
                 if (currentState == GameState.PLAYING) {
                     currentState = GameState.DYING;
-                    deathAnimationTime = 0f; // Reseta o timer
+                    deathAnimationTime = 0f;
 
                     // Define qual animação de morte usar
                     if (backgroundFile.equals("ClearRiver.png")) {
                         currentDeathAnimation = DeathAnimationType.ROCK;
-                    } else { // DarkRiver ou (futuramente) RedRiver
+                    } else if (backgroundFile.equals("DarkRiver.png")) {
                         currentDeathAnimation = DeathAnimationType.KRAKEN;
+                    } else if (backgroundFile.equals("RedRiver.png")) {
+                        currentDeathAnimation = DeathAnimationType.ALIEN_HEAD;
+                    } else {
+                        currentDeathAnimation = DeathAnimationType.KRAKEN; // Padrão
                     }
-
-                    return; // Para de processar o updatePlaying
+                    return;
                 }
             }
+            // Remove se saiu da tela
             if (o.pos.y + o.height < 0) {
                 obstacles.removeIndex(i);
             }
         }
     }
 
-
-    // <<< ALTERADO: Verifica a duração da animação correta >>>
+    // Lógica da animação de morte
     private void updateDying(float delta) {
         deathAnimationTime += delta;
 
@@ -253,15 +280,21 @@ public class GameScreen implements Screen {
             if (deathAnimationTime >= rockDeathZoomDuration) {
                 currentState = GameState.GAME_OVER;
             }
+        } else if (currentDeathAnimation == DeathAnimationType.ALIEN_HEAD) {
+            float totalAnimationDuration = alienHeadTotalDeathFrames * alienHeadDeathFrameDuration;
+            if (deathAnimationTime >= totalAnimationDuration) {
+                currentState = GameState.GAME_OVER;
+            }
         }
     }
 
-
+    // Lógica da tela de Game Over
     private void updateGameOver(float delta) {
-        // Lógica de input movida para o InputProcessor (keyDown)
+        // Input é gerenciado pelo InputProcessor
     }
 
 
+    // Loop de renderização principal
     @Override
     public void render(float delta) {
         update(delta);
@@ -274,11 +307,12 @@ public class GameScreen implements Screen {
         batch.setProjectionMatrix(camera.combined);
         shapes.setProjectionMatrix(camera.combined);
 
+        // Desenha o fundo (rio)
         batch.begin();
         batch.draw(river, 0, riverY1, VIRTUAL_W, VIRTUAL_H);
         batch.draw(river, 0, riverY2, VIRTUAL_W, VIRTUAL_H);
 
-        // <<< ALTERADO: O 'render' agora desenha a animação de morte correta >>>
+        // Desenha os elementos do jogo baseado no estado
         switch (currentState) {
             case PLAYING:
                 for (Obstacle o : obstacles) {
@@ -291,20 +325,24 @@ public class GameScreen implements Screen {
                 break;
 
             case DYING:
-                // Escolhe qual animação desenhar
+                // Desenha a animação de morte correta
                 if (currentDeathAnimation == DeathAnimationType.KRAKEN) {
                     drawGiantKrakenAnimation();
                 } else if (currentDeathAnimation == DeathAnimationType.ROCK) {
-                    drawRockZoomAnimation(); // <<< NOVO
+                    drawRockZoomAnimation();
+                } else if (currentDeathAnimation == DeathAnimationType.ALIEN_HEAD) {
+                    drawGiantAlienHeadAnimation();
                 }
                 break;
 
             case GAME_OVER:
-                // Desenha o frame final da animação correta
+                // Desenha o frame final da animação de morte
                 if (currentDeathAnimation == DeathAnimationType.KRAKEN) {
                     drawGiantKrakenFrame(krakenTotalDeathFrames - 1);
                 } else if (currentDeathAnimation == DeathAnimationType.ROCK) {
-                    drawRockZoomFrame(rockDeathZoomDuration); // <<< NOVO (mostra zoom máximo)
+                    drawRockZoomFrame(rockDeathZoomDuration);
+                } else if (currentDeathAnimation == DeathAnimationType.ALIEN_HEAD) {
+                    drawGiantAlienHeadFrame(alienHeadTotalDeathFrames - 1);
                 }
                 drawGameOverUI();
                 break;
@@ -323,7 +361,8 @@ public class GameScreen implements Screen {
         }
     }
 
-    // --- Métodos de desenho da Morte do Kraken (permanecem) ---
+    // --- Funções de Desenho das Animações de Morte ---
+
     private void drawGiantKrakenAnimation() {
         if (krakenFrames == null || krakenFrames.length == 0) return;
         int frameIndex = (int)(deathAnimationTime / krakenDeathFrameDuration) % krakenTotalDeathFrames;
@@ -335,39 +374,45 @@ public class GameScreen implements Screen {
             frameIndex = krakenFrames.length - 1;
         }
         Texture frame = krakenFrames[frameIndex];
-        float krakenW = 512f;
-        float krakenH = 512f;
-        float krakenX = (VIRTUAL_W - krakenW) / 2f;
-        float krakenY = (VIRTUAL_H - krakenH) / 2f;
-        batch.draw(frame, krakenX, krakenY, krakenW, krakenH);
+        float giantW = 512f;
+        float giantH = 512f;
+        float giantX = (VIRTUAL_W - giantW) / 2f;
+        float giantY = (VIRTUAL_H - giantH) / 2f;
+        batch.draw(frame, giantX, giantY, giantW, giantH);
     }
 
-    // <<< NOVO: Métodos de desenho da Morte da Pedra (Zoom) >>>
     private void drawRockZoomAnimation() {
-        // Passa o tempo atual para a função de desenho
         drawRockZoomFrame(deathAnimationTime);
     }
 
     private void drawRockZoomFrame(float time) {
         if (rockTexture == null) return;
-
-        // Calcula o progresso da animação (de 0.0 a 1.0)
         float progress = MathUtils.clamp(time / rockDeathZoomDuration, 0f, 1f);
-
-        // Define o tamanho inicial e final do "zoom"
-        float startSize = 50f;  // Tamanho de um obstáculo normal
-        float maxSize = 600f;   // Tamanho "grande" na tela
-
-        // Interpola o tamanho atual baseado no progresso
+        float startSize = 50f;
+        float maxSize = 600f;
         float currentSize = MathUtils.lerp(startSize, maxSize, progress);
-
-        // Calcula a posição para desenhar centralizado
         float rockX = (VIRTUAL_W - currentSize) / 2f;
         float rockY = (VIRTUAL_H - currentSize) / 2f;
-
         batch.draw(rockTexture, rockX, rockY, currentSize, currentSize);
     }
-    // --- Fim dos novos métodos ---
+
+    private void drawGiantAlienHeadAnimation() {
+        if (alienHeadFrames == null || alienHeadFrames.length == 0) return;
+        int frameIndex = (int)(deathAnimationTime / alienHeadDeathFrameDuration) % alienHeadTotalDeathFrames;
+        drawGiantAlienHeadFrame(frameIndex);
+    }
+
+    private void drawGiantAlienHeadFrame(int frameIndex) {
+        if (frameIndex < 0 || frameIndex >= alienHeadFrames.length) {
+            frameIndex = alienHeadFrames.length - 1;
+        }
+        Texture frame = alienHeadFrames[frameIndex];
+        float giantW = 512f; // Mesmo tamanho do Kraken
+        float giantH = 512f;
+        float giantX = (VIRTUAL_W - giantW) / 2f;
+        float giantY = (VIRTUAL_H - giantH) / 2f;
+        batch.draw(frame, giantX, giantY, giantW, giantH);
+    }
 
     private void drawGameOverUI() {
         GlyphLayout gl = new GlyphLayout(font, "GAME OVER");
@@ -376,8 +421,9 @@ public class GameScreen implements Screen {
         font.draw(batch, gl2, (VIRTUAL_W - gl2.width)/2f, VIRTUAL_H / 2f - 20f);
     }
 
+    // --- Funções Principais de Lógica ---
+
     private void spawnObstacle() {
-        // ... (Este método permanece o mesmo) ...
         float x, y, w, h;
         y = VIRTUAL_H;
 
@@ -389,29 +435,38 @@ public class GameScreen implements Screen {
 
         } else if (backgroundFile.equals("DarkRiver.png")) {
             if (MathUtils.randomBoolean()) {
-                w = 96f;
-                h = 96f;
+                w = 96f; h = 96f;
                 x = MathUtils.random(minScreenX, maxScreenX);
                 obstacles.add(new Obstacle(krakenFrames, x, y, w, h));
             } else {
-                w = 96f;
-                h = 96f;
+                w = 96f; h = 96f;
                 x = MathUtils.random(minScreenX, maxScreenX);
                 obstacles.add(new Obstacle(tentacleFrames, x, y, w, h));
+            }
+
+        } else if (backgroundFile.equals("RedRiver.png")) {
+            if (MathUtils.randomBoolean()) {
+                w = 128f; h = 128f;
+                x = MathUtils.random(minScreenX, maxScreenX - 32f);
+                obstacles.add(new Obstacle(alienHeadFrames, x, y, w, h));
+            } else {
+                w = 96f; h = 96f;
+                x = MathUtils.random(minScreenX, maxScreenX);
+                obstacles.add(new Obstacle(alienTentacleFrames, x, y, w, h));
             }
         }
     }
 
     private boolean checkCollision(Obstacle o) {
-        // ... (Este método permanece o mesmo) ...
         return boatPos.x < o.pos.x + o.width &&
             boatPos.x + boatW > o.pos.x &&
             boatPos.y < o.pos.y + o.height &&
             boatPos.y + boatH > o.pos.y;
     }
 
+    // --- Funções de Desenho da UI ---
+
     private void drawHUD() {
-        // ... (Este método permanece o mesmo) ...
         float barW = 160f, barH = 10f, pad = 8f;
         float speedRatio  = MathUtils.clamp((scrollSpeed - baseSpeed) / maxBoost, 0f, 1f);
         float targetRatio = MathUtils.clamp((targetSpeed - baseSpeed) / maxBoost, 0f, 1f);
@@ -434,7 +489,6 @@ public class GameScreen implements Screen {
     }
 
     private void drawPauseUI() {
-        // ... (Este método permanece o mesmo) ...
         shapes.begin(ShapeRenderer.ShapeType.Filled);
         shapes.setColor(0, 0, 0, 0.55f);
         shapes.rect(0, 0, VIRTUAL_W, VIRTUAL_H);
@@ -458,7 +512,6 @@ public class GameScreen implements Screen {
     }
 
     private void drawButton(Button b) {
-        // ... (Este método permanece o mesmo) ...
         shapes.begin(ShapeRenderer.ShapeType.Filled);
         shapes.setColor(0, 0, 0, 0.35f);
         shapes.rect(b.x + 3, b.y - 3, b.w, b.h);
@@ -473,6 +526,8 @@ public class GameScreen implements Screen {
         batch.end();
     }
 
+    // --- Métodos do ciclo de vida da tela ---
+
     @Override public void resize(int w, int h) { viewport.update(w, h, true); }
     @Override public void pause() {}
     @Override public void resume() {}
@@ -480,16 +535,19 @@ public class GameScreen implements Screen {
 
     @Override
     public void dispose() {
-        // ... (Este método permanece o mesmo) ...
         batch.dispose();
         shapes.dispose();
         river.dispose();
+
         if (boatFrames != null) {
             for (Texture frame : boatFrames) {
                 if (frame != null) frame.dispose();
             }
         }
+
+        // Limpa todos os assets de obstáculos
         rockTexture.dispose();
+
         if (tentacleFrames != null) {
             for (Texture frame : tentacleFrames) {
                 if (frame != null) frame.dispose();
@@ -500,11 +558,23 @@ public class GameScreen implements Screen {
                 if (frame != null) frame.dispose();
             }
         }
+        if (alienTentacleFrames != null) {
+            for (Texture frame : alienTentacleFrames) {
+                if (frame != null) frame.dispose();
+            }
+        }
+        if (alienHeadFrames != null) {
+            for (Texture frame : alienHeadFrames) {
+                if (frame != null) frame.dispose();
+            }
+        }
+
         font.dispose();
     }
 
+    // --- Classes Internas ---
+
     private static class Button {
-        // ... (Esta classe permanece a mesma) ...
         float x, y, w, h;
         String label;
         Button(float x, float y, float w, float h, String l) { this.x=x; this.y=y; this.w=w; this.h=h; this.label=l; }
@@ -512,7 +582,6 @@ public class GameScreen implements Screen {
     }
 
     private static class Obstacle {
-        // ... (Esta classe permanece a mesma) ...
         Vector2 pos;
         float width, height;
         Texture texture;
