@@ -1,35 +1,23 @@
-# 🎮 RiverRun: A Sombra nas Águas
+🎮 ##RiverRun
+🧠 ##Sobre o Projeto
+RiverRun é um jogo de arcade vertical-scrolling (rolagem vertical) desenvolvido em Java (libGDX).
 
-## 🧠 Sobre o Projeto
-**River Run: Reabilitação no Ritmo** é um *serious game* desenvolvido em **Java (libGDX)** que utiliza **dados de sensores IoT** para transformar pedaladas reais em uma experiência interativa de reabilitação física.
+Inspirado em clássicos de arcade, o jogo tem como objetivo testar os reflexos e a resistência do jogador, que deve pilotar um barco em alta velocidade por um rio traiçoeiro. O desafio é desviar de obstáculos e sobreviver o máximo de tempo possível enquanto a velocidade aumenta.
 
-O jogo tem como objetivo **estimular ritmo, constância e engajamento** em sessões de fisioterapia, convertendo as pedaladas do usuário em velocidade e estabilidade de um barco que percorre um rio cheio de desafios.
+🕹️ ##Conceito do Jogo
+O jogador controla um barco em um rio de rolagem contínua.
 
----
+A velocidade do barco é gerenciada por um sistema de "cadência": o jogador deve pressionar a tecla direcional (Seta para Cima) para ganhar e manter o impulso. O desafio é equilibrar a alta velocidade, necessária para avançar, com o controle preciso para desviar dos perigos que surgem.
 
-## 🚴‍♂️ Conceito do Jogo
-O jogador controla um **barco** em um rio.  
-A **velocidade** e o **equilíbrio** do barco são definidos por dados reais de pedaladas enviados via **Bluetooth ou MQTT**.  
-A cada fase, o jogo exige maior consistência no ritmo, promovendo foco, controle motor e resistência.
+🧩 ##Funcionalidades Principais
+🌊 Rolagem Vertical Contínua: O rio nunca para, com a velocidade de rolagem aumentando com a cadência do jogador.
 
----
+⌨️ Sistema de Cadência: O barco acelera com a tecla "Cima", mas perde velocidade rapidamente, exigindo pressão constante para manter o ritmo.
 
-## 🧩 Funcionalidades Principais
-- 🔗 **Integração IoT:** Recebe dados de sensores (RPM) em tempo real.  
-- ⚙️ **Cálculo de métricas:** velocidade, consistência e tempo em zona de ritmo ideal.  
-- 🌊 **Três fases progressivas:** rio calmo, rápidos moderados e gargantas turbulentas.  
-- 🧭 **Interface interativa:** menus de pausa, reinício e tela de resultados com gráficos.  
-- 📊 **Feedback terapêutico:** acompanhamento visual da evolução do jogador.  
+🏞️ Fases Progressivas: O jogo muda de ambiente, começando no "Rio Calmo" (ClearRiver) e avançando para o "Rio Sombrio" (DarkRiver).
 
----
+🐙 Obstáculos Dinâmicos: O jogador deve desviar de perigos variados, desde pedras estáticas até tentáculos animados que emergem das águas escuras.
 
-## 💻 Tecnologias Utilizadas
-| Componente | Tecnologia |
-|-------------|-------------|
-| Linguagem | Java |
-| Framework de jogo | [libGDX](https://libgdx.com/) |
-| IoT / Comunicação | Bluetooth Low Energy (BLE) ou MQTT |
-| IDE | IntelliJ IDEA |
-| Controle de versão | GitHub |
-| Plataforma | PC |
+💥 Detecção de Colisão: O barco reage visualmente ao colidir com obstáculos, indicando perigo.
 
+🧭 Interface Interativa: O jogo inclui menus funcionais de pausa e a capacidade de retornar ao menu principal.
